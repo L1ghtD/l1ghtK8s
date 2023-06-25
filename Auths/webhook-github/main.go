@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"golang.org/x/oauth2"
-	authentication "k8s.io/api/authentication/v1beta1"
+	authentication "k8s.io/api/authentication/v1"
 )
 
 func main() {
@@ -16,6 +16,7 @@ func main() {
 		decoder := json.NewDecoder(r.Body)
 		var tr authentication.TokenReview
 		err := decoder.Decode(&tr)
+		// 解析请求的 json , 如果不符合 TokenReview 的格式则报错
 		if err != nil {
 			log.Println("[Error]", err.Error())
 			w.WriteHeader(http.StatusBadRequest)
@@ -30,7 +31,7 @@ func main() {
 		}
 		log.Print("receving request")
 
-		// Check User
+		// Check User，校验 github token
 		ts := oauth2.StaticTokenSource(
 			&oauth2.Token{AccessToken: tr.Spec.Token},
 		)
@@ -49,6 +50,8 @@ func main() {
 			})
 			return
 		}
+
+		// 校验成功则打印
 		log.Printf("[Success] login as %s", *user.Login)
 		w.WriteHeader(http.StatusOK)
 		trs := authentication.TokenReviewStatus{
@@ -58,6 +61,7 @@ func main() {
 				UID:      *user.Login,
 			},
 		}
+		// 返回 api-server
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"apiVersion": "authentication.k8s.io/v1beta1",
 			"kind":       "TokenReview",
